@@ -20,6 +20,10 @@ services:
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=guillermoalvarado89@gmail.com"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+      - "--ping=true"
+      - "--ping.entrypoint=web"
+
+
 
     ports:
       - "443:443"     # HTTPS
