@@ -9,7 +9,6 @@ services:
       - "--log.level=DEBUG"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--providers.docker.network=foxbase-nifi_default"
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=guillermoalvarado89@gmail.com"
@@ -34,8 +33,9 @@ services:
     environment:
       SINGLE_USER_CREDENTIALS_USERNAME: ${NIFI_USER}
       SINGLE_USER_CREDENTIALS_PASSWORD: ${NIFI_PASSWORD}
-      NIFI_WEB_HTTPS_HOST: nifi.kliodata.ai
-      NIFI_WEB_HTTPS_PORT: 8443
+      # Cambiar a puerto 9443 para evitar conflicto
+      NIFI_WEB_HTTPS_HOST: 0.0.0.0
+      NIFI_WEB_HTTPS_PORT: 9443
       NIFI_WEB_PROXY_HOST: nifi.kliodata.ai:443
     
     volumes:
@@ -45,7 +45,7 @@ services:
       - default
     
     healthcheck:
-      test: ["CMD", "curl", "-k", "https://localhost:8443/nifi"]
+      test: ["CMD", "curl", "-k", "https://localhost:9443/nifi"]
       interval: 30s
       timeout: 10s
       retries: 10
@@ -59,8 +59,8 @@ services:
       - "traefik.http.routers.nifi.tls=true"
       - "traefik.http.routers.nifi.tls.certresolver=myresolver"
       
-      # Servicio backend
-      - "traefik.http.services.nifi-svc.loadbalancer.server.port=8443"
+      # Servicio backend - CAMBIAR A PUERTO 9443
+      - "traefik.http.services.nifi-svc.loadbalancer.server.port=9443"
       - "traefik.http.services.nifi-svc.loadbalancer.server.scheme=https"
       
       # Conectar router con servicio
