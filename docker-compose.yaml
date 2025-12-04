@@ -22,7 +22,6 @@ services:
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
 
     ports:
-      - "80:80"       # HTTP
       - "443:443"     # HTTPS
       - "8080:8080"   # Dashboard Traefik
     volumes:
