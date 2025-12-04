@@ -13,15 +13,12 @@ services:
       # (más adelante puedes agregar: --providers.docker.exposedbydefault=false)
 
       # Entrypoints
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.nifi.address=:443"
 
       # Let's Encrypt (certs para HTTPS)
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=guillermoalvarado89@gmail.com"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-      - "--ping=true"
-      - "--ping.entrypoint=web"
     environment:
       - DOCKER_API_VERSION=1.52 
 
@@ -61,18 +58,9 @@ services:
 
       # Router: expone NiFi en https://nifi.kliodata.ai
       - "traefik.http.routers.nifi.rule=Host(`nifi.kliodata.ai`)"
-      - "traefik.http.routers.nifi.entrypoints=websecure"
-      - "traefik.http.routers.nifi.tls=true"
+      - "traefik.http.routers.nifi.entrypoints=nifi"
       - "traefik.http.routers.nifi.tls.certresolver=myresolver"
 
-      # Service interno hacia NiFi (HTTPS en 8443)
-      - "traefik.http.routers.nifi.service=nifi-svc"
-      - "traefik.http.services.nifi-svc.loadbalancer.server.port=8443"
-      - "traefik.http.services.nifi-svc.loadbalancer.server.scheme=https"
-
-      # Cert self-signed de NiFi → Traefik no valida
-      - "traefik.http.services.nifi-svc.loadbalancer.serversTransport=nifi-transport"
-      - "traefik.http.serversTransports.nifi-transport.insecureSkipVerify=true"
 
 networks:
   default:
