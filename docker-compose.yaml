@@ -22,6 +22,8 @@ services:
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
       - "--ping=true"
       - "--ping.entrypoint=web"
+    environment:
+      - DOCKER_API_VERSION=1.52 
 
 
 
