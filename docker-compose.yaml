@@ -5,62 +5,64 @@ services:
     image: traefik:v3.6
     container_name: traefik
     command:
-      # Dashboard
       - "--api.insecure=true"
-
-      # Provider Docker
       - "--providers.docker=true"
-      # (más adelante puedes agregar: --providers.docker.exposedbydefault=false)
-
-      # Entrypoints
+      - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.nifi.address=:443"
-
-      # Let's Encrypt (certs para HTTPS)
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=guillermoalvarado89@gmail.com"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-    environment:
-      - DOCKER_API_VERSION=1.52 
-
-
-
+    
     ports:
-      - "443:443"     # HTTPS
-      - "8080:8080"   # Dashboard Traefik
+      - "443:443"
+      - "8080:8080"
+    
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./letsencrypt:/letsencrypt
+    
+    networks:
+      - default
 
   nifi:
     image: apache/nifi:2.6.0
     container_name: nifi
     restart: unless-stopped
-    networks:
-      - default
-
+    
     environment:
       SINGLE_USER_CREDENTIALS_USERNAME: ${NIFI_USER}
       SINGLE_USER_CREDENTIALS_PASSWORD: ${NIFI_PASSWORD}
-      NIFI_WEB_HTTP_PORT: ""
+      NIFI_WEB_HTTPS_HOST: nifi.kliodata.ai
       NIFI_WEB_HTTPS_PORT: 8443
-
+      NIFI_WEB_PROXY_HOST: nifi.kliodata.ai:443
+    
     volumes:
       - ./nifi_data:/opt/nifi/nifi-current/data
-
+    
+    networks:
+      - default
+    
     healthcheck:
       test: ["CMD", "curl", "-k", "https://localhost:8443/nifi"]
       interval: 30s
       timeout: 10s
       retries: 10
-
+    
     labels:
       - "traefik.enable=true"
-
-      # Router: expone NiFi en https://nifi.kliodata.ai
       - "traefik.http.routers.nifi.rule=Host(`nifi.kliodata.ai`)"
       - "traefik.http.routers.nifi.entrypoints=nifi"
       - "traefik.http.routers.nifi.tls.certresolver=myresolver"
-
+      
+      # Configuración del servicio backend
+      - "traefik.http.services.nifi.loadbalancer.server.port=8443"
+      - "traefik.http.services.nifi.loadbalancer.server.scheme=https"
+      
+      # Para ignorar certificados autofirmados de NiFi
+      - "traefik.http.services.nifi.loadbalancer.serversTransport=ignorecert"
+      
+      # Transport para ignorar verificación de certificados
+      - "traefik.http.serversTransports.ignorecert.insecureSkipVerify=true"
 
 networks:
   default:
