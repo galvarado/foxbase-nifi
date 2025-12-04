@@ -1,0 +1,75 @@
+version: "3.8"
+
+services:
+  traefik:
+    image: "traefik:v3.1"
+    container_name: "traefik"
+    command:
+      # - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+
+      # EntryPoint HTTPS
+      - "--entrypoints.https.address=:443"
+
+      # Let's Encrypt (Traefik maneja el certificado)
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=guillermoalvarado89@gmail.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+
+    ports:
+      - "443:443"      # <-- cambiar a "444:443" si 443 ya lo está usando TLJH
+      - "8080:8080"    # dashboard de Traefik
+    networks:
+      - metanet1
+    volumes:
+      - "./letsencrypt:/letsencrypt"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  nifi:
+    image: apache/nifi:latest
+    container_name: nifi
+    restart: unless-stopped
+    networks:
+      - metanet1
+
+    environment:
+      # Usuario único (secure-by-default)
+      SINGLE_USER_CREDENTIALS_USERNAME: ${NIFI_USER}
+      SINGLE_USER_CREDENTIALS_PASSWORD: ${NIFI_PASSWORD}
+
+      # Solo HTTPS interno
+      NIFI_WEB_HTTP_PORT: ""
+      NIFI_WEB_HTTPS_PORT: 8443
+
+    volumes:
+      - ./nifi_data:/opt/nifi/nifi-current/data
+
+    healthcheck:
+      test: ["CMD", "curl", "-k", "https://localhost:8443/nifi"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+    labels:
+      - "traefik.enable=true"
+
+      # Router para nifi.kliodata.ai
+      - "traefik.http.routers.nifi.rule=Host(`nifi.kliodata.ai`)"
+      - "traefik.http.routers.nifi.entrypoints=https"
+      - "traefik.http.routers.nifi.tls=true"
+      - "traefik.http.routers.nifi.tls.certresolver=myresolver"
+
+      # Service interno hacia NiFi HTTPS en 8443
+      - "traefik.http.routers.nifi.service=nifi-svc"
+      - "traefik.http.services.nifi-svc.loadbalancer.server.port=8443"
+      - "traefik.http.services.nifi-svc.loadbalancer.server.scheme=https"
+
+      # NiFi usa cert self-signed, Traefik no debe validar
+      - "traefik.http.services.nifi-svc.loadbalancer.serversTransport=nifi-transport"
+      - "traefik.http.serversTransports.nifi-transport.insecureSkipVerify=true"
+
+networks:
+  metanet1:
+    driver: bridge
