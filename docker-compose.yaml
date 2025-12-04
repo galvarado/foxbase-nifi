@@ -6,9 +6,11 @@ services:
     container_name: traefik
     command:
       - "--api.insecure=true"
+      - "--log.level=DEBUG"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.nifi.address=:443"
+      - "--providers.docker.network=foxbase-nifi_default"
+      - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=guillermoalvarado89@gmail.com"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
@@ -50,19 +52,23 @@ services:
     
     labels:
       - "traefik.enable=true"
+      
+      # Router principal
       - "traefik.http.routers.nifi.rule=Host(`nifi.kliodata.ai`)"
-      - "traefik.http.routers.nifi.entrypoints=nifi"
+      - "traefik.http.routers.nifi.entrypoints=websecure"
+      - "traefik.http.routers.nifi.tls=true"
       - "traefik.http.routers.nifi.tls.certresolver=myresolver"
       
-      # Configuración del servicio backend
-      - "traefik.http.services.nifi.loadbalancer.server.port=8443"
-      - "traefik.http.services.nifi.loadbalancer.server.scheme=https"
+      # Servicio backend
+      - "traefik.http.services.nifi-svc.loadbalancer.server.port=8443"
+      - "traefik.http.services.nifi-svc.loadbalancer.server.scheme=https"
       
-      # Para ignorar certificados autofirmados de NiFi
-      - "traefik.http.services.nifi.loadbalancer.serversTransport=ignorecert"
+      # Conectar router con servicio
+      - "traefik.http.routers.nifi.service=nifi-svc"
       
-      # Transport para ignorar verificación de certificados
-      - "traefik.http.serversTransports.ignorecert.insecureSkipVerify=true"
+      # ServersTransport para ignorar certificados autofirmados
+      - "traefik.http.serversTransports.nifi-transport.insecureSkipVerify=true"
+      - "traefik.http.services.nifi-svc.loadbalancer.serversTransport=nifi-transport"
 
 networks:
   default:
